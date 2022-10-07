@@ -25,6 +25,7 @@ connection_pool *connection_pool::GetInstance()
 //构造初始化
 void connection_pool::init(string url, string User, string PassWord, string DBName, int Port, int MaxConn, int close_log)
 {
+	// 初始化数据库信息
 	m_url = url;
 	m_Port = Port;
 	m_User = User;
@@ -32,6 +33,7 @@ void connection_pool::init(string url, string User, string PassWord, string DBNa
 	m_DatabaseName = DBName;
 	m_close_log = close_log;
 
+	// 创建MaxConn条数据库连接
 	for (int i = 0; i < MaxConn; i++)
 	{
 		MYSQL *con = NULL;
@@ -49,10 +51,12 @@ void connection_pool::init(string url, string User, string PassWord, string DBNa
 			LOG_ERROR("MySQL Error");
 			exit(1);
 		}
+		// 更新连接池和空闲连接数量
 		connList.push_back(con);
 		++m_FreeConn;
 	}
 
+	// 将信号量初始化为最大连接次数
 	reserve = sem(m_FreeConn);
 
 	m_MaxConn = m_FreeConn;
@@ -67,8 +71,9 @@ MYSQL *connection_pool::GetConnection()
 	if (0 == connList.size())
 		return NULL;
 
+	// 取出连接，信号量原子减1，释放连接原子加1，若连接池里没有连接了，信号量为0则阻塞等待
 	reserve.wait();
-	
+	// 由于多线程操作连接池，会造成竞争，使用互斥锁完成同步
 	lock.lock();
 
 	con = connList.front();
@@ -94,7 +99,7 @@ bool connection_pool::ReleaseConnection(MYSQL *con)
 	--m_CurConn;
 
 	lock.unlock();
-
+	// 释放连接原子+1
 	reserve.post();
 	return true;
 }
@@ -102,7 +107,7 @@ bool connection_pool::ReleaseConnection(MYSQL *con)
 //销毁数据库连接池
 void connection_pool::DestroyPool()
 {
-
+	// 通过迭代器遍历连接池链表，关闭对应数据库连接，清空链表并重置空闲连接和现有连接数量。
 	lock.lock();
 	if (connList.size() > 0)
 	{
@@ -125,15 +130,16 @@ int connection_pool::GetFreeConn()
 {
 	return this->m_FreeConn;
 }
-
+// RAII 机制销毁连接池
 connection_pool::~connection_pool()
 {
 	DestroyPool();
 }
-
+// 在获取连接时，通过有参构造对传入的参数进行修改。
 connectionRAII::connectionRAII(MYSQL **SQL, connection_pool *connPool){
+	// 数据库连接本身是指针类型，所以参数需要通过双指针才能对其进行修改
 	*SQL = connPool->GetConnection();
-	
+
 	conRAII = *SQL;
 	poolRAII = connPool;
 }

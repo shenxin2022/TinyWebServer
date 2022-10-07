@@ -10,6 +10,7 @@ class sem
 public:
     sem()
     {
+        // RAII:信号量初始化
         if (sem_init(&m_sem, 0, 0) != 0)
         {
             throw std::exception();
@@ -24,6 +25,7 @@ public:
     }
     ~sem()
     {
+        // RAII:信号量销毁
         sem_destroy(&m_sem);
     }
     bool wait()

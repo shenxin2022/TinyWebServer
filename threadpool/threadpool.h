@@ -30,7 +30,7 @@ private:
     std::list<T *> m_workqueue; //请求队列
     locker m_queuelocker;       //保护请求队列的互斥锁
     sem m_queuestat;            //是否有任务需要处理
-    connection_pool *m_connPool;  //数据库
+    connection_pool *m_connPool;  //数据库连接池指针
     int m_actor_model;          //模型切换
 };
 template <typename T>
@@ -38,16 +38,21 @@ threadpool<T>::threadpool( int actor_model, connection_pool *connPool, int threa
 {
     if (thread_number <= 0 || max_requests <= 0)
         throw std::exception();
+
+    // 线程id初始化
     m_threads = new pthread_t[m_thread_number];
     if (!m_threads)
         throw std::exception();
     for (int i = 0; i < thread_number; ++i)
     {
+        // 循环创建线程，并将工作线程按要求进行运行
+        // pthread_create将threadpool类的对象作为参数传给静态函数worker,在worker中引用这个对象，并调用其方法run
         if (pthread_create(m_threads + i, NULL, worker, this) != 0)
         {
             delete[] m_threads;
             throw std::exception();
         }
+        // 将线程进行分离后，不用单独对工作线程进行回收
         if (pthread_detach(m_threads[i]))
         {
             delete[] m_threads;
@@ -101,14 +106,18 @@ void threadpool<T>::run()
 {
     while (true)
     {
+        // 信号量等待
         m_queuestat.wait();
+        // 被唤醒后先加互斥锁
         m_queuelocker.lock();
         if (m_workqueue.empty())
         {
             m_queuelocker.unlock();
             continue;
         }
+        // 从请求队列中取出第一个任务
         T *request = m_workqueue.front();
+        // 将任务从请求队列删除
         m_workqueue.pop_front();
         m_queuelocker.unlock();
         if (!request)

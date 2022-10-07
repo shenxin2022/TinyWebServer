@@ -28,7 +28,7 @@ WebServer::~WebServer()
     delete m_pool;
 }
 
-void WebServer::init(int port, string user, string passWord, string databaseName, int log_write, 
+void WebServer::init(int port, string user, string passWord, string databaseName, int log_write,
                      int opt_linger, int trigmode, int sql_num, int thread_num, int close_log, int actor_model)
 {
     m_port = port;
@@ -103,6 +103,7 @@ void WebServer::thread_pool()
 void WebServer::eventListen()
 {
     //网络编程基础步骤
+    // 创建监听socket文件描述符
     m_listenfd = socket(PF_INET, SOCK_STREAM, 0);
     assert(m_listenfd >= 0);
 
@@ -119,16 +120,20 @@ void WebServer::eventListen()
     }
 
     int ret = 0;
+    // 创建监听socket的TCP/IP的IPV4 地址
     struct sockaddr_in address;
     bzero(&address, sizeof(address));
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = htonl(INADDR_ANY);
+    address.sin_addr.s_addr = htonl(INADDR_ANY); // INADDR_ANY:将套接字绑定到所有可用的接口
     address.sin_port = htons(m_port);
 
     int flag = 1;
+    // SO_REUSEADDR 允许端口被重复使用
     setsockopt(m_listenfd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
+    // 绑定socket和它的地址
     ret = bind(m_listenfd, (struct sockaddr *)&address, sizeof(address));
     assert(ret >= 0);
+    // 创建监听队列以存放待处理的客户连接，在这些客户连接被accept之前
     ret = listen(m_listenfd, 5);
     assert(ret >= 0);
 
@@ -222,6 +227,7 @@ bool WebServer::dealclinetdata()
     {
         while (1)
         {
+            // accept()返回一个新的socket文件描述符用于send()和recv()
             int connfd = accept(m_listenfd, (struct sockaddr *)&client_address, &client_addrlength);
             if (connfd < 0)
             {
@@ -240,7 +246,7 @@ bool WebServer::dealclinetdata()
     }
     return true;
 }
-
+// 处理信号
 bool WebServer::dealwithsignal(bool &timeout, bool &stop_server)
 {
     int ret = 0;
@@ -381,16 +387,17 @@ void WebServer::eventLoop()
 
     while (!stop_server)
     {
+        // epoll_wait等待一组文件描述符上的事件，并将当前所有就绪的epoll_event复制到events数组中
         int number = epoll_wait(m_epollfd, events, MAX_EVENT_NUMBER, -1);
         if (number < 0 && errno != EINTR)
         {
             LOG_ERROR("%s", "epoll failure");
             break;
         }
-
+        // 遍历events数组以处理这些已经就绪的事件
         for (int i = 0; i < number; i++)
         {
-            int sockfd = events[i].data.fd;
+            int sockfd = events[i].data.fd; // 事件表中就绪的socket文件描述符
 
             //处理新到的客户连接
             if (sockfd == m_listenfd)

@@ -219,8 +219,10 @@ bool http_conn::read_once()
     //ET读数据
     else
     {
+        // 非阻塞ET模式下，需要一次性将数据读完
         while (true)
         {
+            // 从套接字接收数据，存储在m_read_buf缓冲区
             bytes_read = recv(m_sockfd, m_read_buf + m_read_idx, READ_BUFFER_SIZE - m_read_idx, 0);
             if (bytes_read == -1)
             {
@@ -338,7 +340,7 @@ http_conn::HTTP_CODE http_conn::parse_content(char *text)
     }
     return NO_REQUEST;
 }
-
+// process_read()对请求报文进行解析
 http_conn::HTTP_CODE http_conn::process_read()
 {
     LINE_STATUS line_status = LINE_OK;

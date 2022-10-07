@@ -24,7 +24,7 @@ public:
 	//单例模式
 	static connection_pool *GetInstance();
 
-	void init(string url, string User, string PassWord, string DataBaseName, int Port, int MaxConn, int close_log); 
+	void init(string url, string User, string PassWord, string DataBaseName, int Port, int MaxConn, int close_log);
 
 private:
 	connection_pool();
@@ -46,12 +46,14 @@ public:
 	int m_close_log;	//日志开关
 };
 
+// RAII:将资源或者状态与对象的生命周期绑定，实现资源和状态的安全管理
 class connectionRAII{
 
 public:
+	// 不直接调用获取和释放连接的接口，将其封装起来，通过RAII机制进行获取和释放。
 	connectionRAII(MYSQL **con, connection_pool *connPool);
 	~connectionRAII();
-	
+
 private:
 	MYSQL *conRAII;
 	connection_pool *poolRAII;
