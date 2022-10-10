@@ -19,21 +19,22 @@ public:
         static Log instance;
         return &instance;
     }
-
+    // 异步写日志公有方法，调用私有方法async_write_log
     static void *flush_log_thread(void *args)
     {
         Log::get_instance()->async_write_log();
     }
     //可选择的参数有日志文件、日志缓冲区大小、最大行数以及最长日志条队列
     bool init(const char *file_name, int close_log, int log_buf_size = 8192, int split_lines = 5000000, int max_queue_size = 0);
-
+    // 将输出内容按照标准格式整理
     void write_log(int level, const char *format, ...);
-
+    // 强制刷新缓冲区
     void flush(void);
 
 private:
     Log();
     virtual ~Log();
+    // 异步写日志
     void *async_write_log()
     {
         string single_log;

@@ -166,11 +166,16 @@ http_conn::LINE_STATUS http_conn::parse_line()
     char temp;
     for (; m_checked_idx < m_read_idx; ++m_checked_idx)
     {
+        // temp为将要分析的字节
         temp = m_read_buf[m_checked_idx];
+
+        // 如果当前是\r字符，则有可能会读取到完整行
         if (temp == '\r')
         {
+            // 下一个字符达到了buffer结尾，则接收不完整，需要继续接收
             if ((m_checked_idx + 1) == m_read_idx)
                 return LINE_OPEN;
+            // 下一个字符是\n，将\r\n改为\0\0
             else if (m_read_buf[m_checked_idx + 1] == '\n')
             {
                 m_read_buf[m_checked_idx++] = '\0';
@@ -343,6 +348,7 @@ http_conn::HTTP_CODE http_conn::parse_content(char *text)
 // process_read()对请求报文进行解析
 http_conn::HTTP_CODE http_conn::process_read()
 {
+    // 初始化从状态机状态、HTTP请求解析结果
     LINE_STATUS line_status = LINE_OK;
     HTTP_CODE ret = NO_REQUEST;
     char *text = 0;
@@ -352,6 +358,7 @@ http_conn::HTTP_CODE http_conn::process_read()
         text = get_line();
         m_start_line = m_checked_idx;
         LOG_INFO("%s", text);
+        // 主状态机的三种状态转移逻辑
         switch (m_check_state)
         {
         case CHECK_STATE_REQUESTLINE:
@@ -690,15 +697,19 @@ bool http_conn::process_write(HTTP_CODE ret)
 void http_conn::process()
 {
     HTTP_CODE read_ret = process_read();
+    // NO_REQUEST：请求不完整，需要继续接收请求数据
     if (read_ret == NO_REQUEST)
     {
+        // 注册并监听读事件
         modfd(m_epollfd, m_sockfd, EPOLLIN, m_TRIGMode);
         return;
     }
+    // 调用process_write完成报文响应
     bool write_ret = process_write(read_ret);
     if (!write_ret)
     {
         close_conn();
     }
+    // 注册并监听写事件
     modfd(m_epollfd, m_sockfd, EPOLLOUT, m_TRIGMode);
 }

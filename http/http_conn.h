@@ -51,16 +51,16 @@ public:
     // 主状态机的状态
     enum CHECK_STATE
     {
-        CHECK_STATE_REQUESTLINE = 0,
-        CHECK_STATE_HEADER,
-        CHECK_STATE_CONTENT
+        CHECK_STATE_REQUESTLINE = 0, // 解析请求行
+        CHECK_STATE_HEADER,          // 解析请求头
+        CHECK_STATE_CONTENT          // 解析消息体
     };
     // 报文解析的结果
     enum HTTP_CODE
     {
-        NO_REQUEST,
-        GET_REQUEST,
-        BAD_REQUEST,
+        NO_REQUEST,  // 请求不完整，需要继续读取请求报文数据
+        GET_REQUEST, // 获得了完整的HTTP请求
+        BAD_REQUEST, // HTTP请求报文有语法错误
         NO_RESOURCE,
         FORBIDDEN_REQUEST,
         FILE_REQUEST,
@@ -70,9 +70,9 @@ public:
     // 从状态机的状态
     enum LINE_STATUS
     {
-        LINE_OK = 0,
-        LINE_BAD,
-        LINE_OPEN
+        LINE_OK = 0, // 完整读取一行
+        LINE_BAD,    // 报文语法有误
+        LINE_OPEN    // 读取的行不完整
     };
 
 public:
@@ -93,7 +93,7 @@ public:
     {
         return &m_address;
     }
-    // 同步线程初始化数据库读取表
+    // 将数据库中的用户名和密码载入到服务器的map中来，map中的key为用户名，value为密码
     void initmysql_result(connection_pool *connPool);
     int timer_flag;
     int improv;
@@ -166,6 +166,7 @@ private:
     int bytes_have_send;
     char *doc_root;
 
+    // 用户名和密码
     map<string, string> m_users;
     int m_TRIGMode;
     int m_close_log;

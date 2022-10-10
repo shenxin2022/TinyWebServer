@@ -24,7 +24,7 @@ private:
     void run();
 
 private:
-    int m_thread_number;        //线程池中的线程数
+    int m_thread_number;        //线程池中的线程数，默认为8，跟CPU核数相同
     int m_max_requests;         //请求队列中允许的最大请求数
     pthread_t *m_threads;       //描述线程池的数组，其大小为m_thread_number
     std::list<T *> m_workqueue; //请求队列
@@ -34,7 +34,8 @@ private:
     int m_actor_model;          //模型切换
 };
 template <typename T>
-threadpool<T>::threadpool( int actor_model, connection_pool *connPool, int thread_number, int max_requests) : m_actor_model(actor_model),m_thread_number(thread_number), m_max_requests(max_requests), m_threads(NULL),m_connPool(connPool)
+threadpool<T>::threadpool( int actor_model, connection_pool *connPool, int thread_number, int max_requests) :
+    m_actor_model(actor_model),m_thread_number(thread_number), m_max_requests(max_requests), m_threads(NULL),m_connPool(connPool)
 {
     if (thread_number <= 0 || max_requests <= 0)
         throw std::exception();
@@ -97,10 +98,12 @@ bool threadpool<T>::append_p(T *request)
 template <typename T>
 void *threadpool<T>::worker(void *arg)
 {
+    // 线程回调函数，arg是this
     threadpool *pool = (threadpool *)arg;
     pool->run();
     return pool;
 }
+// 不断地等任务队列有新任务，然后加锁取任务->取到任务解锁->执行任务
 template <typename T>
 void threadpool<T>::run()
 {
